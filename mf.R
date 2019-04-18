@@ -49,25 +49,38 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 
 
 # Arguments: 
-#   - @lPath2Csvs: list, default @csvs 
+#   - @csvs: list, default @csvs 
 #        A list of paths to the CSV files containing the datasets
 #   - @pTotal: double
 #        Portion of the total dataset to be used. 0 < p < 1
 #   - @pTest: double
 #        Portion of the partitioned dataset to be used for the test set.
-run <- function(lPath2Csvs=csvs, pTotal=0.1, pTest=0.1)
+run <- function(csvs=csvs, pTotal=c(0.1, 0.5, 1), pTest=0.1, 
+                nUser=6000, nJoke=5)
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
   df <- df[!is.na(rating)] 
   
-  # Use only p * 100% of the whole dataset
-  cat('Using ', pTotal*100, '% of the total dataset\n', sep='')
-  idx <-  sample(nrow(df), round(pTotal*nrow(df)))
-  df <- df[idx, ]
+  # # Use only p * 100% of the whole dataset
+  # cat('Using ', pTotal*100, '% of the total dataset\n', sep='')
+  # idx <-  sample(nrow(df), round(pTotal*nrow(df)))
+  # df <- df[idx, ]
   
-  # CV 
-  testIdx <- sample(nrow(df), round(pTest*nrow(df)))
-  testSet <- df[testIdx,]
-  trainSet <- df[-testIdx,]
+  # Create a test set with 6k random users and 5 random joke ratings
+  testuID <- sample(max(df$uID), nUser) 
+  df_temp <- df
+  df_temp <- df_temp[, rowID := .I]
+  df_temp <- df_temp[uID %in% testuID]
+  
+  
+  testSet <- data.table(matrix(nrow=0, ncol=5)) # the result table
+  colnames(testSet) <- c('uID', 'jID', 'rating', 'nRated', 'rowID')
+  for(i in testuID)
+  {
+    testSet <- rbindlist(list(testSet, df_temp[uID == i][sample(max(nRated), nJoke)]))
+  }
+  
+  df <- df[-testSet$rowID, 1:4] # remove all test set rows from train set
+  testSet <- testSet[order(uID, jID, rating, nRated), 1:4]
 }
