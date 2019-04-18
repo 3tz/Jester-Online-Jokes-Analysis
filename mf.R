@@ -51,22 +51,18 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 # Arguments: 
 #   - @csvs: list, default @csvs 
 #        A list of paths to the CSV files containing the datasets
-#   - @pTotal: double
-#        Portion of the total dataset to be used. 0 < p < 1
-#   - @pTest: double
-#        Portion of the partitioned dataset to be used for the test set.
-run <- function(csvs=csvs, pTotal=c(0.1, 0.5, 1), pTest=0.1, 
-                nUser=6000, nJoke=5)
+#   - @nUser: integer default 6000
+#        Number of users to be randomly chosen from the dataset as the test set
+#   - @nJoke: integer default 5
+#        Number of jokes to be chosen for each randomly chosen user
+#   - @pTotal: vector of doubles
+#        A vector of portions of the total dataset to be used. 0 < p < 1
+run <- function(csvs=csvs, nUser=6000, nJoke=5, pTotal=c(0.1, 0.5, 1))
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
   df <- df[!is.na(rating)] 
-  
-  # # Use only p * 100% of the whole dataset
-  # cat('Using ', pTotal*100, '% of the total dataset\n', sep='')
-  # idx <-  sample(nrow(df), round(pTotal*nrow(df)))
-  # df <- df[idx, ]
-  
+
   # Create a test set with 6k random users and 5 random joke ratings
   testuID <- sample(max(df$uID), nUser) 
   df_temp <- df
@@ -83,4 +79,31 @@ run <- function(csvs=csvs, pTotal=c(0.1, 0.5, 1), pTest=0.1,
   
   df <- df[-testSet$rowID, 1:4] # remove all test set rows from train set
   testSet <- testSet[order(uID, jID, rating, nRated), 1:4]
+  
+    
+  # Use only p * 100% of the whole dataset
+  for(p in pTotal)
+  {
+    cat('Using ', p*100, '% of the total dataset\n', sep='')
+    
+    trainSet <- data.table(matrix(nrow=0, ncol=4))
+    colnames(trainSet) <- c('uID', 'jID', 'rating', 'nRated') 
+
+    # for each user
+    for(i in 1:max(df$uID))
+    {
+      if(i %% 100 == 0)
+        print(i)
+      df_i <- df[uID == i]
+      trainSet <- rbindlist(list(trainSet, df_i[sample(nrow(df_i), round(nrow(df_i) * p) )]))
+    }
+    
+    # TODO: add NMF computation with @trainset
+    
+    #idx <-  sample(nrow(df), round(pTotal*nrow(df)))
+    #df <- df[idx, ]
+  }
+    
+  
+  
 }
