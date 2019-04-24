@@ -27,6 +27,9 @@ csvs <- list('data/jester-data-1.csv',
 #        A list of paths to the CSV files containing the datasets
 #   - @repNA: logical, default TRUE
 #        Logical indicator for replacing rating of 99 with NA.
+#
+# Returns:
+#   - A data.table with the 3-column + covariates format
 dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 {
   df <- rbindlist(lapply(csvs, fread))
@@ -47,63 +50,49 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
   rst[order(uID, jID, rating, nRated)]
 }
 
-
+# Main function to run NMF on given datasets and produce output CSV files.
+#
 # Arguments: 
 #   - @csvs: list, default @csvs 
-#        A list of paths to the CSV files containing the datasets
-#   - @nUser: integer default 6000
-#        Number of users to be randomly chosen from the dataset as the test set
-#   - @nJoke: integer default 5
-#        Number of jokes to be chosen for each randomly chosen user
-#   - @pTotal: vector of doubles
-#        A vector of portions of the total dataset to be used. 0 < p < 1
-run <- function(csvs=csvs, nUser=6000, nJoke=5, pTotal=c(0.1, 0.5, 1))
+#        A list of paths to the CSV files containing the complete datasets
+#
+#   - @testing300: str, default 'data/jester-data-testing.csv'
+#       Path to the testing set with the chosen 300 users.
+#
+#   - @proportions: vector of doubles, default c(0.1, 0.5, 1)
+#        A vector of portions of the number of jokes per user to be used for 
+#        predictions. 0 < p < 1
+#
+#   - @ranks: vector of integers, default c(1, 10, 20, 30, ..., 290, 300)
+#        A vector of ranks to be run by the NMF.
+#
+run <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
+  proportions=c(0.1, 0.5, 1), ranks=c(1,seq(10,300, by=10)))
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
   df <- df[!is.na(rating)] 
 
-  # Create a test set with 6k random users and 5 random joke ratings
-  testuID <- sample(max(df$uID), nUser) 
-  df_temp <- df
-  df_temp <- df_temp[, rowID := .I]
-  df_temp <- df_temp[uID %in% testuID]
+  df_300 <- fread(testing300)
+  testuID <- df_300$UserID + 1 # uIDs start from 0 in jester-data-testing.csv
   
-  
-  testSet <- data.table(matrix(nrow=0, ncol=5)) # the result table
-  colnames(testSet) <- c('uID', 'jID', 'rating', 'nRated', 'rowID')
-  for(i in testuID)
+  for(p in proportions)
   {
-    testSet <- rbindlist(list(testSet, df_temp[uID == i][sample(max(nRated), nJoke)]))
-  }
-  
-  df <- df[-testSet$rowID, 1:4] # remove all test set rows from train set
-  testSet <- testSet[order(uID, jID, rating, nRated), 1:4]
-  
-    
-  # Use only p * 100% of the whole dataset
-  for(p in pTotal)
-  {
-    cat('Using ', p*100, '% of the total dataset\n', sep='')
-    
-    trainSet <- data.table(matrix(nrow=0, ncol=4))
-    colnames(trainSet) <- c('uID', 'jID', 'rating', 'nRated') 
-
-    # for each user
-    for(i in 1:max(df$uID))
+    # TODO: Cross validation
+    # trainset1, trainset2, testset1, testset2 = CV(p)
+    for(r in ranks)
     {
-      if(i %% 100 == 0)
-        print(i)
-      df_i <- df[uID == i]
-      trainSet <- rbindlist(list(trainSet, df_i[sample(nrow(df_i), round(nrow(df_i) * p) )]))
+      # TODO: Training/testing
+      # ests1 = nmf(trainset1, r)
+      # ests2 = nmf(trainset2, r)
+      # ... 
+      
+      # TODO: output formating 
+      # ests_total = merge(ests1, ests2)
+      # 
     }
-    
-    # TODO: add NMF computation with @trainset
-    
-    #idx <-  sample(nrow(df), round(pTotal*nrow(df)))
-    #df <- df[idx, ]
   }
-    
-  
   
 }
+
+run()
