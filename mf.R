@@ -62,9 +62,12 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #   - @testuIDs: vector
 #       A vector that contains all user IDs in the testing set.
 #
+#   - @verbose: logical, default FALSE
+#       Indicator for showing iteration number.
+#
 # Returns: list
 #   - A list with training set 1,2 and testing set 1,2 in the respective order.
-CV <- function(df, p, testuIDs)
+CV <- function(df, p, testuIDs, verbose=F)
 {
   # Create empty training and testing sets
   trainSet <- list()
@@ -78,12 +81,13 @@ CV <- function(df, p, testuIDs)
     colnames(testSet[[i]]) <- c('uID', 'jID', 'rating', 'nRated') 
   }
   
-  cat(paste0('Total # of Users: ', max(df$uID),'\n'))
+  if(verbose)
+    cat(paste0('Total # of Users: ', max(df$uID),'\n'))
   
   # For each user ID, compute the p*100% joke IDs from the total jokes
   for(i in 1:max(df$uID))
   {
-    if(i %% 1000 == 0) 
+    if(i %% 1000 == 0 && verbose) 
       cat(paste0('Current iteration: ', i, '\n'))
       
     df_i <- df[uID == i]
@@ -140,8 +144,12 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   
   for(p in proportions)
   {
-    # TODO: Cross validation
-    # trainset1, trainset2, testset1, testset2 = CV(p)
+    l <- CV(df, p, testuIDs, T)
+    trainSet1 = l[[1]][order(uID, jID)]
+    trainSet2 = l[[2]][order(uID, jID)]
+    testSet1 = l[[3]][order(uID, jID)]
+    testSet2 = l[[4]][order(uID, jID)]
+        
     for(r in ranks)
     {
       # TODO: Training/testing
