@@ -65,10 +65,16 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #   - @verbose: logical, default FALSE
 #       Indicator for showing iteration number.
 #
+#   - @seed: integer, default 9999
+#       Seed for RNG. Set to NA to avoid reproducibility.
+#
 # Returns: list
 #   - A list with training set 1,2 and testing set 1,2 in the respective order.
-CV <- function(df, p, testuIDs, verbose=F)
+CV <- function(df, p, testuIDs, verbose=F, seed=9999)
 {
+  if(!is.na(seed))
+    set.seed(seed)
+    
   # Create empty training and testing sets
   trainSet <- list()
   testSet <- list()
@@ -133,11 +139,15 @@ CV <- function(df, p, testuIDs, verbose=F)
 #        A vector of ranks to be run by the NMF.
 #
 run <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
-  proportions=c(0.1, 0.5, 1), ranks=c(1,seq(10,300, by=10)))
+  proportions=c(0.3), ranks=c(1,seq(10, 60, by=10)))
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
   df <- df[!is.na(rating)] 
+  
+  # Min-max normalization over ratings
+  normalize <- function(x) {(x - min(x)) / (max(x) - min(x))}
+  df$rating <- normalize(df$rating)
 
   df_300 <- fread(testing300)
   testuIDs <- df_300$UserID + 1 # uIDs start from 0 in jester-data-testing.csv
@@ -145,6 +155,8 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   for(p in proportions)
   {
     l <- CV(df, p, testuIDs, T)
+    save(l, file=paste0('./RData/nmf_CV_out_', p*100))
+    
     trainSet1 = l[[1]][order(uID, jID)]
     trainSet2 = l[[2]][order(uID, jID)]
     testSet1 = l[[3]][order(uID, jID)]
@@ -175,7 +187,7 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
 
     }
   }
-  
+  ests_total
 }
 
 run()
