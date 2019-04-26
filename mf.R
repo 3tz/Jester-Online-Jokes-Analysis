@@ -152,13 +152,15 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
         
     for(r in ranks)
     {
-      # TODO: Training/testing
-      # ests1 = nmf(trainset1, r)
-      # ests2 = nmf(trainset2, r)
-      # ... 
+      # Training/testing
+      trainedModel1 <- trainReco(trainSet1[,-4], rnk = r, nmf = TRUE) # training using trainSet1
+      estimates1 <- predict.RecoS3(trainedModel1, testSet1[,-(3:4)]) #predicting for testSet1 using trainedModel1
+      
+      trainedModel2 <- trainReco(trainSet2[,-4], rnk = r, nmf = TRUE) # training using trainSet2
+      estimates2 <- predict.RecoS3(trainedModel2, testSet2[,-(3:4)]) #predicting for testSet1 using trainedModel2
       
       # TODO: output formating 
-      # ests_total = merge(ests1, ests2)
+      # ests_total = merge(estimatess1, estimatess2)
       # 
     }
   }
