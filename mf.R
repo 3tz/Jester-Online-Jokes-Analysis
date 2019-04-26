@@ -159,9 +159,20 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       trainedModel2 <- trainReco(trainSet2[,-4], rnk = r, nmf = TRUE) # training using trainSet2
       estimates2 <- predict.RecoS3(trainedModel2, testSet2[,-(3:4)]) #predicting for testSet1 using trainedModel2
       
+      estimatedSet1 <- testSet1
+      estimatedSet1[,3] <- estimates1 # predicted ratings along with uID ,jID and nRated
+      
+      estimatedSet2 <- testSet2
+      estimatedSet2[,3] <- estimates2 # predicted ratings along with uID ,jID and nRated
+      
+      ests_total <- rbind(estimatedSet1 , estimatedSet2)
+      ests_total <- ests_total[order(uID, jID)] # combined estimated data in form ('uID', 'jID', 'rating', 'nRated') 
+      
       # TODO: output formating 
-      # ests_total = merge(estimatess1, estimatess2)
-      # 
+      # make csv file of estimated ratings of number of users x number of jokes in form ('UserID', 'J1', 'J2', 'J3',...,'J100')
+      # calculate absolute value of empirical value - estimated value (i.e. actual rating - predicted rating)
+      #...
+
     }
   }
   
