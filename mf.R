@@ -190,7 +190,9 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
 
   df_300 <- fread(testing300)
   testuIDs <- df_300$UserID + 1 # uIDs start from 0 in jester-data-testing.csv
-  
+  #to store all the estimates for each proportion and rank combination
+  estimate_list <- list() 
+  i <- 1
   for(p in proportions)
   {
     l <- CV(df, p, testuIDs, T)
@@ -218,13 +220,14 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       
       ests_total <- rbind(estimatedSet1 , estimatedSet2)
       ests_total <- ests_total[order(uID, jID)] # combined estimated data in form ('uID', 'jID', 'rating', 'nRated') 
-      
+      estimate_list[[i]] <- ests_total # list to maintain all the calculated estimates
+      i <- i+1
       # TODO: output formating 
       # make csv file of estimated ratings of number of users x number of jokes in form ('UserID', 'J1', 'J2', 'J3',...,'J100')
       # calculate absolute value of empirical value - estimated value (i.e. actual rating - predicted rating)
       #...
-
+      
     }
   }
-  ests_total
+  estimate_list
 }
