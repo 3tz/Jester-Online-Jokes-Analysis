@@ -50,7 +50,7 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
   rst[order(uID, jID, rating, nRated)]
 }
 
-# Produce 2 pairs of training and testing sets to test on @testuIDs.
+# Produce pairs of training and testing sets to test on @testuIDs.
 #
 # Arguments:
 #   - @p: double
@@ -69,7 +69,7 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #       Seed for RNG. Set to NA to avoid reproducibility.
 #
 # Returns: list
-#   - A list with training set 1,2 and testing set 1,2 in the respective order.
+#   - A list that contains the training and testing sets
 CV <- function(df, p, testuIDs, verbose=F, seed=9999)
 {
   if(!is.na(seed))
@@ -79,7 +79,10 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
   trainSet <- list()
   testSet <- list()
   
-  for(i in 1:2)
+  # Number of sets
+  nSets <- ceiling(max(2, 1 / (1-p)))
+  
+  for(i in 1:nSets)
   {
     trainSet[[i]] <- data.table(matrix(nrow=0, ncol=4))
     testSet[[i]] <- data.table(matrix(nrow=0, ncol=4))
@@ -90,36 +93,72 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
   if(verbose)
     cat(paste0('Total # of Users: ', max(df$uID),'\n'))
   
-  # For each user ID, compute the p*100% joke IDs from the total jokes
-  for(i in 1:max(df$uID))
+  if(p < 0.5)
   {
-    if(i %% 1000 == 0 && verbose) 
-      cat(paste0('Current iteration: ', i, '\n'))
-      
-    df_i <- df[uID == i]
-    
-    nRated <- df_i[1]$nRated # total number of jokes rated by user i
-    nTrain <- round(p * nRated) # Number of jokes to be used for training
-        
-    rows <- sample(nRated, nTrain) # row IDs for training    
-    trainSet[[1]] <- rbind(trainSet[[1]], df_i[rows])
-    # Pick row IDs from testing set 1 to gaurantee mut-ex
-    rows2 <- sample((1:nRated)[-rows], nTrain)
-    trainSet[[2]] <- rbind(trainSet[[2]], df_i[rows2])
-
-    # Add to testing set if it is one of the 300 users
-    if(i %in% testuIDs)
+    # For each user ID, compute the p*100% joke IDs from the total jokes
+    for(i in 1:max(df$uID))
     {
-      testSet[[1]] <- rbind(testSet[[1]], df_i[-rows])
-      # REMOVED: testSet[[2]] will just be trainSet[[1]] where uIDs in the 300
-      # # Only include the rows that weren't in the first testing set
-      # testSet[[2]] <- rbind(testSet[[2]], df_i[rows]) 
+      if(i %% 1000 == 0 && verbose) 
+        cat(paste0('Current iteration: ', i, '\n'))
+        
+      df_i <- df[uID == i]
+      
+      nRated <- df_i[1]$nRated # total number of jokes rated by user i
+      nTrain <- round(p * nRated) # Number of jokes to be used for training
+          
+      rows <- sample(nRated, nTrain) # row IDs for training    
+      trainSet[[1]] <- rbind(trainSet[[1]], df_i[rows])
+      # Pick row IDs from testing set 1 to gaurantee mut-ex
+      rows2 <- sample((1:nRated)[-rows], nTrain)
+      trainSet[[2]] <- rbind(trainSet[[2]], df_i[rows2])
+
+      # Add to testing set if it is one of the 300 users
+      if(i %in% testuIDs)
+      {
+        testSet[[1]] <- rbind(testSet[[1]], df_i[-rows])
+        # REMOVED: testSet[[2]] will just be trainSet[[1]] where uIDs in the 300
+        # # Only include the rows that weren't in the first testing set
+        # testSet[[2]] <- rbind(testSet[[2]], df_i[rows]) 
+      }
+      
     }
-    
+    testSet[[2]] <- rbind(testSet[[2]], trainSet[[1]][uID %in% testuIDs])    
   }
-  testSet[[2]] <- rbind(testSet[[2]], trainSet[[1]][uID %in% testuIDs]) 
+  else
+  {
+    # For each user ID, compute the p*100% joke IDs from the total jokes
+    for(i in 1:max(df$uID))
+    {
+      if(i %% 1000 == 0 && verbose) 
+        cat(paste0('Current iteration: ', i, '\n'))
+        
+      df_i <- df[uID == i]
+      
+      nRated <- df_i[1]$nRated # total number of jokes rated by user i
+      idxs <- 1:nRated
+      ntest <- round((1-p) * nRated) # Number of jokes to be used for testing
+      
+      # split into training and testing     
+      perm <- sample(nRated, nRated) 
+      # List of test indices for each testing set
+      l_testIdxs <- split(perm, perm %% nSets)
+      
+      for(j in 1:length(l_testIdxs))
+      {
+        testRows <- l_testIdxs[[j]]
+        trainRows <- sample(idxs[!idxs %in% testRows], nRated-ntest)
+        trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
+        
+        # Add to testing set if it is one of the 300 users
+        if(i %in% testuIDs)
+        {
+          testSet[[j]] <- rbind(testSet[[j]], df_i[testRows])
+        }
+      }
+    }    
+  }
   
-  list(trainSet[[1]], trainSet[[2]], testSet[[1]], testSet[[2]])
+  list(trainSet, testSet)
 }
 
 # Main function to run NMF on given datasets and produce output CSV files.
@@ -138,8 +177,8 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
 #   - @ranks: vector of integers, default c(1, 10, 20, 30, ..., 290, 300)
 #        A vector of ranks to be run by the NMF.
 #
-run <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
-  proportions=c(0.3), ranks=c(1,seq(10, 60, by=10)))
+main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
+  proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)))
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
@@ -189,5 +228,3 @@ run <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   }
   ests_total
 }
-
-run()
