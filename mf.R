@@ -190,8 +190,15 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
 #   - @ranks: vector of integers, default c(1, 10, 20, 30, ..., 290, 300)
 #        A vector of ranks to be run by the NMF.
 #
+#   - @useRDS: logical, default T
+#        Indicator for using saved .RDS files instead of computing again.
+#
+#   - @time_hex: string, default '5cd816a5'
+#        Time in hexidecimal for the .RDS to be used.
+#
 main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
-  proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)))
+  proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)), useRDS=T, 
+  time_hex='5cd816a5')
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
@@ -205,17 +212,33 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   testuIDs <- df_300$UserID + 1 # uIDs start from 0 in jester-data-testing.csv
   #to store all the estimates for each proportion and rank combination
   estimate_list <- list() 
+  
+  dn <- 'RData'
+  if(!useRDS)
+  {
+    time <- Sys.time() # for naming RDS files to avoid overwrite
+    time_hex <- as.character(as.hexmode(as.integer(time)))
+    for(p in proportions)
+    {
+      l <- CV(df, p, testuIDs, T)
+      saveRDS(l, paste0('./', dn, '/nmf_CV_out_', p*100, '_', time_hex, '.rds'))
+    }
+  }
+
+  
   i <- 1
   for(p in proportions)
   {
-    l <- CV(df, p, testuIDs, T)
-    save(l, file=paste0('./RData/nmf_CV_out_', p*100))
+    filename <- paste0('./', dn, '/nmf_CV_out_', p*100, '_', time_hex, '.rds')
+    l <- loadRDS(filename)
     
-    trainSet1 = l[[1]][order(uID, jID)]
-    trainSet2 = l[[2]][order(uID, jID)]
-    testSet1 = l[[3]][order(uID, jID)]
-    testSet2 = l[[4]][order(uID, jID)]
-        
+    
+    # TODO: stitch the code
+    # trainSet1 = l[[1]][order(uID, jID)]
+    # trainSet2 = l[[2]][order(uID, jID)]
+    # testSet1 = l[[3]][order(uID, jID)]
+    # testSet2 = l[[4]][order(uID, jID)]
+    # 
     for(r in ranks)
     {
       # Training/testing
@@ -246,7 +269,7 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       estimate_list[[i]] <- final_matrix # list to maintain all the calculated estimates
       i <- i+1
     }
-}
+  }
   
   estimate_list
 }
