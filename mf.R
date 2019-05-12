@@ -233,14 +233,20 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       
       ests_total <- rbind(estimatedSet1 , estimatedSet2)
       ests_total <- ests_total[order(uID, jID)] # combined estimated data in form ('uID', 'jID', 'rating', 'nRated') 
-      estimate_list[[i]] <- ests_total # list to maintain all the calculated estimates
-      i <- i+1
-      # TODO: output formating 
-      # make csv file of estimated ratings of number of users x number of jokes in form ('UserID', 'J1', 'J2', 'J3',...,'J100')
-      # calculate absolute value of empirical value - estimated value (i.e. actual rating - predicted rating)
-      #...
       
+      # output formating 
+      # make matrix file of estimated ratings of number of users x number of jokes in form ('UserID', 'J1', 'J2', 'J3',...,'J100')
+      user_row<-vector()
+      final_matrix <-data.frame()
+      for(id in unique(ests_total$uID)){
+        user_row <-ests_total$rating[which(ests_total$uID == id)]
+        final_matrix<- rbind(final_matrix, user_row)
+      }
+      
+      estimate_list[[i]] <- final_matrix # list to maintain all the calculated estimates
+      i <- i+1
     }
-  }
+}
+  
   estimate_list
 }
