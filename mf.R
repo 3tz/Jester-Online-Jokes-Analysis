@@ -80,8 +80,15 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
   testSet <- list()
   
   # Number of sets
-  nSets <- ceiling(max(2, 1 / (1-p)))
+  # nSets <- ceiling(max(2, 1 / (1-p)))
   
+  # Minimum of pairs, so there'll be at least round(p*nRated) number of 
+  #   training data to be picked from for each user.
+  tmp <- setNames(c(2, 3, 12), c('0.3', '0.6', '0.9'))
+  nSets <- tmp[as.character(p)]
+  
+  if(is.na(nSets)) stop("p must be 0.3, 0.6, or 0.9")
+        
   for(i in 1:nSets)
   {
     trainSet[[i]] <- data.table(matrix(nrow=0, ncol=4))
@@ -136,7 +143,11 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
       
       nRated <- df_i[1]$nRated # total number of jokes rated by user i
       idxs <- 1:nRated
-      ntest <- round((1-p) * nRated) # Number of jokes to be used for testing
+      # Rounding
+      tmp <- round((1-p)*100*nRated + 50 , 2)
+      ntest <- floor(tmp/100)
+      
+      # ntest <- round((1-p) * nRated) # Number of jokes to be used for testing
       
       # split into training and testing     
       perm <- sample(nRated, nRated) 
@@ -146,6 +157,8 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
       for(j in 1:length(l_testIdxs))
       {
         testRows <- l_testIdxs[[j]]
+        # cat(paste(nRated, ntest, nRated - ntest, length(idxs[!idxs %in% testRows]), '\n'))
+        # print(sort(testRows))
         trainRows <- sample(idxs[!idxs %in% testRows], nRated-ntest)
         trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
         
