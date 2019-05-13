@@ -49,9 +49,15 @@ test_CV <- function(CV_out, p, testing300='data/jester-data-testing.csv')
       cat(paste0(curUser, ' test users done.\n'))
   }
   total <- 0
+  
+  alluIDs <- 1:73421
+  alljIDs <- 1:100
+  
   for(df in train)
   {
-    total <- sum(total, nrow(df))
+    # Each training subset should contain all unique uIDs and jIDs
+    stopifnot(all(sort(unique(df$uID)) == alluIDs))
+    stopifnot(all(sort(unique(df$jID)) == alljIDs))
   }
   cat('OK\n')
 }
