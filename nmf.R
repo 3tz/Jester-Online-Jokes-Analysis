@@ -82,13 +82,13 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   df_na <- df[is.na(rating)] # saves NAs for now
   df <- df[!is.na(rating)] 
   
-  # Min-max normalization over ratings
-  normalize <- function(x) {(x - min(x)) / (max(x) - min(x))}
-  df$rating <- normalize(df$rating)
+  # shift rating to the positive direction by minimum rating
+  shiftRatings <- function(x) {x + 10}
+  df$rating <- shiftRatings(df$rating)
 
   df_300 <- fread(testing300)
   mtx_300 <- as.matrix(df_300[, 2:ncol(df_300)])
-  mtx_300 <- normalize(mtx_300)
+  mtx_300 <- shiftRatings(mtx_300)
   testuIDs <- sort(df_300$UserID + 1) # uIDs start from 0 in jester-data-testing.csv
   
   # To store all the estimates for each proportion and rank combination in the 
