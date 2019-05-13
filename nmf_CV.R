@@ -53,9 +53,8 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
     # For each user ID, compute the p*100% joke IDs from the total jokes
     for(i in 1:max(df$uID))
     {
-      if(i %% 1000 == 0 && verbose) 
-        cat(paste0('# of Users Finished: ', i, '\n'))
-        
+      if(i %% 1000 == 0 && verbose) cat(paste0('  Starting User: ', i, '\n'))
+      
       df_i <- df[uID == i]
       
       nRated <- df_i[1]$nRated # total number of jokes rated by user i
@@ -81,34 +80,42 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
     # For each user ID, compute the p*100% joke IDs from the total jokes
     for(i in 1:max(df$uID))
     {
-      if(i %% 1000 == 0 && verbose) 
-        cat(paste0('Current iteration: ', i, '\n'))
+      if(i %% 1000 == 0 && verbose) cat(paste0('  Starting User: ', i, '\n'))
         
       df_i <- df[uID == i]
       
       nRated <- df_i[1]$nRated # total number of jokes rated by user i
-      idxs <- 1:nRated
       # Rounding
       tmp <- round((1-p)*100*nRated + 50 , 2)
-      ntest <- floor(tmp/100)
+      ntest <- floor(tmp/100) # Number of jokes to be used for testing
       
-      # ntest <- round((1-p) * nRated) # Number of jokes to be used for testing
       
-      # split into training and testing     
-      perm <- sample(nRated, nRated) 
-      # List of test indices for each testing set
-      l_testIdxs <- split(perm, perm %% nSets)
-      
-      for(j in 1:length(l_testIdxs))
+      if(i %in% testuIDs) # Mutual-exclusion for users in testing300
       {
-        testRows <- l_testIdxs[[j]]
-        trainRows <- sample(idxs[!idxs %in% testRows], nRated-ntest)
-        trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
+        # Find random permutation of the rated jIDs of this user   
+        perm <- sample(nRated, nRated) 
+        # Evenly plit the random permutation into nSets groups
+        l_testIdxs <- split(perm, perm %% nSets)
         
-        # Add to testing set if it is one of the 300 users
-        if(i %in% testuIDs)
+        # For each of these groups, they will be the IDs in the testset
+        for(j in 1:nSets)
         {
+          testRows <- l_testIdxs[[j]]
+          idxs <- 1:nRated
+          trainRows <- sample(idxs[!idxs %in% testRows], nRated-ntest)
+          trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
+          
+          # Add to testing set if it is one of the 300 users
           testSet[[j]] <- rbind(testSet[[j]], df_i[testRows])
+        }
+      }
+      else  # Just random sampling for other users
+      {
+        for(j in 1:nSets)
+        {
+          nTrain <- nRated - ntest
+          trainRows <- sample(nRated, nTrain)
+          trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
         }
       }
     }    
