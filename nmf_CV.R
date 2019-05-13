@@ -54,7 +54,7 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
     for(i in 1:max(df$uID))
     {
       if(i %% 1000 == 0 && verbose) 
-        cat(paste0('Current iteration: ', i, '\n'))
+        cat(paste0('# of Users Finished: ', i, '\n'))
         
       df_i <- df[uID == i]
       
@@ -71,9 +71,6 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
       if(i %in% testuIDs)
       {
         testSet[[1]] <- rbind(testSet[[1]], df_i[-rows])
-        # REMOVED: testSet[[2]] will just be trainSet[[1]] where uIDs in the 300
-        # # Only include the rows that weren't in the first testing set
-        # testSet[[2]] <- rbind(testSet[[2]], df_i[rows]) 
       }
       
     }
@@ -105,8 +102,6 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
       for(j in 1:length(l_testIdxs))
       {
         testRows <- l_testIdxs[[j]]
-        # cat(paste(nRated, ntest, nRated - ntest, length(idxs[!idxs %in% testRows]), '\n'))
-        # print(sort(testRows))
         trainRows <- sample(idxs[!idxs %in% testRows], nRated-ntest)
         trainSet[[j]] <- rbind(trainSet[[j]], df_i[trainRows])
         
@@ -117,6 +112,13 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
         }
       }
     }    
+  }
+  
+  # Sort by uID and jID
+  for(i in 1:nSets)
+  {
+    trainSet[[i]] <- trainSet[[i]][order(uID,jID)]
+    testSet[[i]] <- testSet[[i]][order(uID,jID)]
   }
   
   list(trainSet, testSet)
