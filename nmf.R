@@ -198,7 +198,7 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
 #
 main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
   proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)), useRDS=T, 
-  time_hex='5cd816a5')
+  time_hex='5cd816a5', verbose=T)
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
@@ -209,9 +209,41 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   df$rating <- normalize(df$rating)
 
   df_300 <- fread(testing300)
-  testuIDs <- df_300$UserID + 1 # uIDs start from 0 in jester-data-testing.csv
-  #to store all the estimates for each proportion and rank combination
-  estimate_list <- list() 
+  mtx_300 <- as.matrix(df_300[, 2:ncol(df_300)])
+  mtx_300 <- normalize(mtx_300)
+  testuIDs <- sort(df_300$UserID + 1) # uIDs start from 0 in jester-data-testing.csv
+  
+  # To store all the estimates for each proportion and rank combination in the 
+  #   following format: 
+  #
+  # estimate_list
+  #    |
+  #    |____ [['0.3']]
+  #    |          |
+  #    |          |____ [[strRnk1]] 
+  #    |          |        |____ final_matrix
+  #    |          |           
+  #    |          |____ [[strRnk2]] 
+  #    |          |        |____ final_matrix
+  #    |         ...
+  #    |
+  #    |____ [['0.6']]
+  #    |          |
+  #    |          |____ [[strRnk1]] 
+  #    |          |        |____ final_matrix
+  #    |          |           
+  #    |          |____ [[strRnk2]] 
+  #    |          |        |____ final_matrix
+  #    |         ...
+  #   ...
+  estimate_list = setNames(vector('list', length(proportions)), as.character(proportions))
+                           
+  # Matrix to store mean absolute error for each combination:
+  #     rnk1 rnk2 rnk3 rnk4 ...        
+  # p1   x    x    x    x   ...        
+  # p2   x    x    x    x   ...     
+  # ...
+  mae_mtx <- matrix(nrow=length(proportions), ncol=length(ranks))
   
   dn <- 'RData'
   if(!useRDS)
@@ -225,51 +257,84 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
     }
   }
 
-  
-  i <- 1
   for(p in proportions)
   {
+    if(verbose) cat(paste0('Starting training size ', p, '\n'))
+    
     filename <- paste0('./', dn, '/nmf_CV_out_', p*100, '_', time_hex, '.rds')
-    l <- loadRDS(filename)
+    l <- readRDS(filename)
+    trainSets <- l[[1]]
+    testSets <- l[[2]]
     
+    # List of estimates for all ranks
+    strP = as.character(p)
+    estimate_list[[strP]] = setNames(vector('list', length(ranks)), as.character(ranks))
     
-    # TODO: stitch the code
-    # trainSet1 = l[[1]][order(uID, jID)]
-    # trainSet2 = l[[2]][order(uID, jID)]
-    # testSet1 = l[[3]][order(uID, jID)]
-    # testSet2 = l[[4]][order(uID, jID)]
-    # 
     for(r in ranks)
     {
-      # Training/testing
-      trainedModel1 <- trainReco(trainSet1[,-4], rnk = r, nmf = TRUE) # training using trainSet1
-      estimates1 <- predict.RecoS3(trainedModel1, testSet1[,-(3:4)]) #predicting for testSet1 using trainedModel1
+      if(verbose) cat(paste0('    Starting rank ', r, '\n'))
       
-      trainedModel2 <- trainReco(trainSet2[,-4], rnk = r, nmf = TRUE) # training using trainSet2
-      estimates2 <- predict.RecoS3(trainedModel2, testSet2[,-(3:4)]) #predicting for testSet1 using trainedModel2
+      # Allocate datatable
+      ests_total <- data.table(matrix(nrow=300*100, ncol=3))
+      colnames(ests_total) <- c('uID', 'jID', 'rating')
+      curRow <- 1
       
-      estimatedSet1 <- testSet1
-      estimatedSet1[,3] <- estimates1 # predicted ratings along with uID ,jID and nRated
-      
-      estimatedSet2 <- testSet2
-      estimatedSet2[,3] <- estimates2 # predicted ratings along with uID ,jID and nRated
-      
-      ests_total <- rbind(estimatedSet1 , estimatedSet2)
-      ests_total <- ests_total[order(uID, jID)] # combined estimated data in form ('uID', 'jID', 'rating', 'nRated') 
-      
-      # output formating 
-      # make matrix file of estimated ratings of number of users x number of jokes in form ('UserID', 'J1', 'J2', 'J3',...,'J100')
-      user_row<-vector()
-      final_matrix <-data.frame()
-      for(id in unique(ests_total$uID)){
-        user_row <-ests_total$rating[which(ests_total$uID == id)]
-        final_matrix<- rbind(final_matrix, user_row)
+      # For each pair of training/testing set. predict and save the results
+      for(i in 1:length(trainSets))
+      {
+        if(verbose) cat(paste0('        Starting pair ', i, '\n'))
+        trainSet <- trainSets[[i]]
+        testSet <- testSets[[i]]
+        
+        # Training/testing
+        # 'capture.output' hides the output from 'trainReco'
+        capture.output(trainedModel <- trainReco(trainSet[,-4], rnk = r, nmf = TRUE)) # training using trainSet
+        estimates <- predict.RecoS3(trainedModel, testSet[, -(3:4)]) #predicting for testSet using trainedModel
+        
+        # Add to the pre-allocated space 
+        ests_total$uID[curRow:(curRow + nrow(testSet) - 1)] <- testSet$uID
+        ests_total$jID[curRow:(curRow + nrow(testSet) - 1)] <- testSet$jID
+        ests_total$rating[curRow:(curRow + nrow(testSet) - 1)] <- estimates
+        
+        curRow <- curRow + nrow(testSet) 
       }
       
-      estimate_list[[i]] <- final_matrix # list to maintain all the calculated estimates
-      i <- i+1
+      # output formating 
+      # make matrix file of estimated ratings of number of users x number of 
+      #   jokes in form:
+      #            ('J1', 'J2', 'J3',...,'J100')
+      # testuID1     x     x     x   ...   x          
+      # testuID2     x     x     x   ...   x     
+      #   ...        x     x     x   ...   x
+      # testuID300   x     x     x   ...   x    
+      
+      # Allocate a (300 users) x (100 jokes) matrix
+      final_matrix <- matrix(, nrow = 300, ncol = 100) 
+      
+      # testuIDs is strictly increasing, so just insert in increasing order
+      for(i in 1:300){
+        id <- testuIDs[i]
+        final_matrix[i, ] <- ests_total$rating[which(ests_total$uID == id)]
+      }
+      
+      # Store the results for current rank in estimate_list
+      strRnk <- as.character(r)
+      estimate_list[[strP]][[strRnk]] <- final_matrix
+      # Store MAE for the current rank in mae_mtx
+      rIdx <- which(p == proportions)
+      cIdx <- which(r == ranks)
+      mae_mtx[rIdx, cIdx] <- mean(abs(mtx_300 - final_matrix))
     }
   }
   
-  estimate_list
+  out <- list(estimate_list, mae_mtx)
+  
+  # Save the output as .rds file
+  time <- Sys.time() # for naming RDS files to avoid overwrite
+  time_hex <- as.character(as.hexmode(as.integer(time)))
+  strPs <- paste(p*100, collapse='_')
+  strRnks <- paste(min(ranks), max(ranks), sep='_')
+  saveRDS(out, paste0('./', dn, '/nmf_main_out_', strPs, '_', strRnks, '_', time_hex, '.rds'))
+  
+  out
 }
