@@ -2,6 +2,7 @@ library(data.table)
 library(rectools) 
 library(recosystem)
 
+source('./test/nmf_test.R')
 source('nmf_CV.R')
 
 set.seed(9999)
@@ -75,7 +76,7 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #        Time in hexidecimal for the .RDS to be used.
 #
 main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
-  proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)), useRDS=T, 
+  proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 100, by=10)), useRDS=T, 
   time_hex='5cda01a9', verbose=T)
 {
   df <- dataProcessing(csvs)
