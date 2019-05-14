@@ -71,12 +71,12 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #   - @useRDS: logical, default T
 #        Indicator for using saved .RDS files instead of computing again.
 #
-#   - @time_hex: string, default '5cd816a5'
+#   - @time_hex: string, default '5cda01a9'
 #        Time in hexidecimal for the .RDS to be used.
 #
 main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
   proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 60, by=10)), useRDS=T, 
-  time_hex='5cd816a5', verbose=T)
+  time_hex='5cda01a9', verbose=T)
 {
   df <- dataProcessing(csvs)
   df_na <- df[is.na(rating)] # saves NAs for now
@@ -194,8 +194,11 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
         training_ests <- predict.RecoS3(trainedModel, trainSet[, -(3:4)]) 
         
         training_MAE <- mean(abs(training_ests - trainSet$rating))
-        if(verbose) cat(paste0('Training MAE: ', training_MAE, '\n'))
         mae_tr[[strP]][[strRnk]][i] <- training_MAE
+        
+        testing_MAE <- mean(abs(estimates - testSet$rating))
+        if(verbose) cat(paste0('Training MAE: ', training_MAE, 
+                               '. Testing MAE: ', testing_MAE, '\n'))
         
         # Add to the pre-allocated space 
         ests_total$uID[curRow:(curRow + nrow(testSet) - 1)] <- testSet$uID
@@ -204,6 +207,9 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
         
         curRow <- curRow + nrow(testSet) 
       }
+      
+      # Sort them in order for easier extraction.
+      ests_total <- ests_total[order(uID, jID)] 
       
       # output formating 
       # make matrix file of estimated ratings of number of users x number of 
