@@ -116,12 +116,28 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
   #   ...
   estimate_list = setNames(vector('list', length(proportions)), as.character(proportions))
                            
-  # Matrix to store mean absolute error for each combination:
+  # List of vectors to store training MAEs:
+  #
+  # mae_tr
+  #   |
+  #   |____ [['0.3']]
+  #   |          |
+  #   |          |____ [[strRnk1]] 
+  #   |          |        |          [1]             [2]
+  #   |          |        |____ c(training_MAE, training_MAE... )
+  #   |          |
+  #   |          |____ [[strRnk2]] 
+  #   |          |        |          [1]             [2]
+  #   |          |        |____ c(training_MAE, training_MAE... )
+  #  ...        ...
+  mae_tr <- setNames(vector('list', length(proportions)), as.character(proportions)) 
+                     
+  # Matrix to store testing mean absolute error for each combination:
   #     rnk1 rnk2 rnk3 rnk4 ...        
   # p1   x    x    x    x   ...        
   # p2   x    x    x    x   ...     
   # ...
-  mae_mtx <- matrix(nrow=length(proportions), ncol=length(ranks))
+  mae_est <- matrix(nrow=length(proportions), ncol=length(ranks))
   
   dn <- 'RData'
   if(!useRDS)
@@ -147,6 +163,7 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
     # List of estimates for all ranks
     strP = as.character(p)
     estimate_list[[strP]] = setNames(vector('list', length(ranks)), as.character(ranks))
+    mae_tr[[strP]] = setNames(vector('list', length(ranks)), as.character(ranks))
     
     for(r in ranks)
     {
@@ -157,10 +174,15 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       colnames(ests_total) <- c('uID', 'jID', 'rating')
       curRow <- 1
       
+      # Allocate vector for training MAEs
+      strRnk <- as.character(r)
+      mae_tr[[strP]][[strRnk]] <- double(length(trainSets))
+      
+      
       # For each pair of training/testing set. predict and save the results
       for(i in 1:length(trainSets))
       {
-        if(verbose) cat(paste0('        Starting pair ', i, '\n'))
+        if(verbose) cat(paste0('        Starting pair ', i, '... '))
         trainSet <- trainSets[[i]]
         testSet <- testSets[[i]]
         
@@ -168,6 +190,12 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
         # 'capture.output' hides the output from 'trainReco'
         capture.output(trainedModel <- trainReco(trainSet[,-4], rnk = r, nmf = TRUE)) # training using trainSet
         estimates <- predict.RecoS3(trainedModel, testSet[, -(3:4)]) #predicting for testSet using trainedModel
+        # Prediction on training set
+        training_ests <- predict.RecoS3(trainedModel, trainSet[, -(3:4)]) 
+        
+        training_MAE <- mean(abs(training_ests - trainSet$rating))
+        if(verbose) cat(paste0('Training MAE: ', training_MAE, '\n'))
+        mae_tr[[strP]][[strRnk]][i] <- training_MAE
         
         # Add to the pre-allocated space 
         ests_total$uID[curRow:(curRow + nrow(testSet) - 1)] <- testSet$uID
@@ -196,16 +224,15 @@ main <- function(csvs=csvs, testing300='data/jester-data-testing.csv',
       }
       
       # Store the results for current rank in estimate_list
-      strRnk <- as.character(r)
       estimate_list[[strP]][[strRnk]] <- final_matrix
-      # Store MAE for the current rank in mae_mtx
+      # Store MAE for the current rank in the matrix
       rIdx <- which(p == proportions)
       cIdx <- which(r == ranks)
-      mae_mtx[rIdx, cIdx] <- mean(abs(mtx_300 - final_matrix))
+      mae_est[rIdx, cIdx] <- mean(abs(mtx_300 - final_matrix))
     }
   }
   
-  out <- list(estimate_list, mae_mtx)
+  out <- list(estimate_list, mae_tr, mae_est)
   
   # Save the output as .rds file
   time <- Sys.time() # for naming RDS files to avoid overwrite
