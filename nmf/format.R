@@ -78,22 +78,24 @@ nmf_format <- function(mainOut='./RData/nmf_main_out_30_60_90_1_100_5cda01a9.rds
  
   l_est <- out[[1]] # estimate_list
   mae_est <- out[[3]] # Estimate MAE
-  
+  ranks <- names(l_est[[1]]) # ranks
   # Find optimal ranks
   if(all(optimalRnks == 'auto'))
   {
-    optimalRnks <- integer(length(p))
+    optimalRnks <- character(length(p))
     
     # For each sublist for p in l_est
     for(i in 1:length(p))
     {
       l <- l_est[[strPs[i]]]
-      ranks <- names(l)
-      optimalRnks[i] <- which.min(mae_est[i, ])
+      ridx <- which(c(0.3, 0.6, 0.9) == p[i])
+      optimalRnks[i] <- ranks[which.min(mae_est[ridx, ])]
     }
   }
-  
-  cat('Optimal Ranks:', ranks[optimalRnks], '\n')
+  else
+    optimalRnks <- as.character(optimalRnks)
+    
+  cat('Optimal Ranks:', optimalRnks, '\n')
   
   # Generate AE matrix
   genAE <- function(ests, true)
@@ -143,32 +145,29 @@ nmf_format <- function(mainOut='./RData/nmf_main_out_30_60_90_1_100_5cda01a9.rds
     tcv_nmf <- genTCV(ae_nmf)
     write.table(tcv_nmf, file=paste0(dn, 'TCV_nmf.csv'), row.names=F)
 
-  }
-     
-  dn <- paste0('./output/')
-  # AE_unif.csv
-  ae_unif <- genAE(unif[, 2:101], mtx_true)
-  write.table(ae_unif, file=paste0(dn, 'AE_unif.csv'), row.names=F)
-  
-  # AE_tavg.csv
-  ae_tavg <- genAE(tavg[, 2:101], mtx_true)
-  write.table(ae_tavg, file=paste0(dn, 'AE_tavg.csv'), row.names=F)
-  
-  # AE_uavg.csv
-  ae_uavg <- genAE(uavg[, 2:101], mtx_true)
-  write.table(ae_uavg, file=paste0(dn, 'AE_uavg.csv'), row.names=F)
-  
-  # TCV_unif.csv
-  tcv_unif <- genTCV(ae_unif)
-  write.table(tcv_unif, file=paste0(dn, 'TCV_unif.csv'), row.names=F)
-  
-  # TCV_tavg.csv
-  tcv_tavg <- genTCV(ae_tavg)
-  write.table(tcv_tavg, file=paste0(dn, 'TCV_tavg.csv'), row.names=F)
-  
-  # TCV_uavg.csv
-  tcv_uavg <- genTCV(ae_uavg)
-  write.table(tcv_uavg, file=paste0(dn, 'TCV_uavg.csv'), row.names=F)
+    # AE_unif.csv
+    ae_unif <- genAE(unif[, 2:101], mtx_true)
+    write.table(ae_unif, file=paste0(dn, 'AE_unif.csv'), row.names=F)
 
+    # AE_tavg.csv
+    ae_tavg <- genAE(tavg[, 2:101], mtx_true)
+    write.table(ae_tavg, file=paste0(dn, 'AE_tavg.csv'), row.names=F)
+
+    # AE_uavg.csv
+    ae_uavg <- genAE(uavg[, 2:101], mtx_true)
+    write.table(ae_uavg, file=paste0(dn, 'AE_uavg.csv'), row.names=F)
+
+    # TCV_unif.csv
+    tcv_unif <- genTCV(ae_unif)
+    write.table(tcv_unif, file=paste0(dn, 'TCV_unif.csv'), row.names=F)
+
+    # TCV_tavg.csv
+    tcv_tavg <- genTCV(ae_tavg)
+    write.table(tcv_tavg, file=paste0(dn, 'TCV_tavg.csv'), row.names=F)
+
+    # TCV_uavg.csv
+    tcv_uavg <- genTCV(ae_uavg)
+    write.table(tcv_uavg, file=paste0(dn, 'TCV_uavg.csv'), row.names=F)
+  }
   
 }
