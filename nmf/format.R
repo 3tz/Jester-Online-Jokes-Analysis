@@ -125,7 +125,9 @@ nmf_format <- function(mainOut='./RData/nmf_main_out_30_60_90_1_100_5cda01a9.rds
   # For each p
   for(i in 1:length(strPs))
   {
-    dn <- paste0('./output/', p[i]*100, '/')
+    dn <- paste0(p[i]*100, '_', optimalRnks[i])
+    dn <- paste0('./output/', dn, '/')
+    dir.create(dn, showWarnings=F)
     
     jIDs <- 1:100
     rnk <- optimalRnks[i]
