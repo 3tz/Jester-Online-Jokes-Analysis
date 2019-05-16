@@ -35,11 +35,17 @@ setwd(dir)
 #    TCV_tavg.csv: Ternary Cat Var for Total Average.   
 #    TCV_uavg.csv: Ternary Cat Var for User Average.
 #
-# 5. estimates.csv: Estimates with NMF.  
+# 5. EST_nmf.csv: Estimates with NMF.  
 # uID rec1 rec2 rec3 rec4 ... rec100
-#  1  jID  jID  jID  jID  ... jID  
-#  5  jID  jID  jID  jID  ... jID
-#  7  jID  jID  jID  jID  ... jID 
+#  1   x    x    x    x   ...   x  
+#  5   x    x    x    x   ...   x
+#  7   x    x    x    x   ...   x 
+# ...
+# 6. TRUE_nmf.csv: True values but sorted according to recommendations.csv
+# uID rec1 rec2 rec3 rec4 ... rec100
+#  1   x    x    x    x   ...   x 
+#  5   x    x    x    x   ...   x
+#  7   x    x    x    x   ...   x
 # ...
 #  
 # Arguments:
@@ -137,39 +143,56 @@ nmf_format <- function(mainOut='./RData/nmf_main_out_30_60_90_1_100_5cda01a9.rds
     recoms <- t(apply(ests, 1, order, decreasing=T))
     recoms <- cbind(testuIDs, recoms)
     colnames(recoms) <- c('uID', paste0('rec', 1:100))
-    write.table(recoms, file=paste0(dn, 'recommendations.csv'), row.names=F)
+    write.table(recoms, file=paste0(dn, 'recommendations.csv'), sep=',', row.names=F)
     
     # AE_nmf.csv
     ae_nmf <- genAE(ests, mtx_true)
-    write.table(ae_nmf, file=paste0(dn, 'AE_nmf.csv'), row.names=F)
+    write.table(ae_nmf, file=paste0(dn, 'AE_nmf.csv'), sep=',', row.names=F)
+    
+    # EST_nmf.csv
+    est_nmf <- ests
+    est_nmf <- t(apply(est_nmf, 1, sort, decreasing=T))
+    est_nmf <- cbind(testuIDs, est_nmf)
+    colnames(est_nmf) <- c('uID', paste0('rec', 1:100))
+    write.table(est_nmf, file=paste0(dn, 'EST_nmf.csv'), sep=',', row.names=F)
+    
+    # TRUE_nmf.csv
+    true_nmf <- mtx_true
+    # order them the same way as recoms
+    for(j in 1:300)
+      true_nmf[j, ] <- true_nmf[j, recoms[j, 2:101]]
+      
+    true_nmf <- cbind(testuIDs, true_nmf)
+    colnames(true_nmf) <- c('uID', paste0('rec', 1:100))
+    write.table(true_nmf, file=paste0(dn, 'TRUE_nmf.csv'), sep=',', row.names=F)    
     
     # TCV_nmf.csv 
     tcv_nmf <- genTCV(ae_nmf)
-    write.table(tcv_nmf, file=paste0(dn, 'TCV_nmf.csv'), row.names=F)
+    write.table(tcv_nmf, file=paste0(dn, 'TCV_nmf.csv'), sep=',', row.names=F)
 
     # AE_unif.csv
     ae_unif <- genAE(unif[, 2:101], mtx_true)
-    write.table(ae_unif, file=paste0(dn, 'AE_unif.csv'), row.names=F)
+    write.table(ae_unif, file=paste0(dn, 'AE_unif.csv'), sep=',', row.names=F)
 
     # AE_tavg.csv
     ae_tavg <- genAE(tavg[, 2:101], mtx_true)
-    write.table(ae_tavg, file=paste0(dn, 'AE_tavg.csv'), row.names=F)
+    write.table(ae_tavg, file=paste0(dn, 'AE_tavg.csv'), sep=',', row.names=F)
 
     # AE_uavg.csv
     ae_uavg <- genAE(uavg[, 2:101], mtx_true)
-    write.table(ae_uavg, file=paste0(dn, 'AE_uavg.csv'), row.names=F)
+    write.table(ae_uavg, file=paste0(dn, 'AE_uavg.csv'), sep=',', row.names=F)
 
     # TCV_unif.csv
     tcv_unif <- genTCV(ae_unif)
-    write.table(tcv_unif, file=paste0(dn, 'TCV_unif.csv'), row.names=F)
+    write.table(tcv_unif, file=paste0(dn, 'TCV_unif.csv'), sep=',', row.names=F)
 
     # TCV_tavg.csv
     tcv_tavg <- genTCV(ae_tavg)
-    write.table(tcv_tavg, file=paste0(dn, 'TCV_tavg.csv'), row.names=F)
+    write.table(tcv_tavg, file=paste0(dn, 'TCV_tavg.csv'), sep=',', row.names=F)
 
     # TCV_uavg.csv
     tcv_uavg <- genTCV(ae_uavg)
-    write.table(tcv_uavg, file=paste0(dn, 'TCV_uavg.csv'), row.names=F)
+    write.table(tcv_uavg, file=paste0(dn, 'TCV_uavg.csv'), sep=',', row.names=F)
   }
   
 }
