@@ -1,5 +1,9 @@
 library(data.table)
 
+# Change current directory to nmf/
+dir <- getSrcDirectory(function(x) {})
+setwd(dirname(dir))
+
 # Testing functino for nmf.R:CV(). "OK" will be printed if all test cases 
 #   passed.
 #
@@ -15,7 +19,7 @@ library(data.table)
 #       Path to the testing set with the chosen 300 users.
 #
 # Returns: NA
-test_CV <- function(CV_out, p, testing300='data/jester-data-testing.csv')
+test_CV <- function(CV_out, p, testing300='../data/jester-data-testing.csv')
 {
   l <- readRDS(CV_out)
   train <- l[[1]]

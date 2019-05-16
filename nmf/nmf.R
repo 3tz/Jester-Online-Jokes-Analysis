@@ -2,14 +2,18 @@ library(data.table)
 library(rectools) 
 library(recosystem)
 
+# Change current directory to nmf/
+dir <- getSrcDirectory(function(x) {})
+setwd(dir)
+
 source('./test/nmf_test.R')
-source('nmf_CV.R')
+source('CV.R')
 
 set.seed(9999)
 
-csvs <- list('data/jester-data-1.csv', 
-             'data/jester-data-2.csv', 
-             'data/jester-data-3.csv')
+csvs <- list('../data/jester-data-1.csv', 
+             '../data/jester-data-2.csv', 
+             '../data/jester-data-3.csv')
 
 # Convert the datasets into the following format: 
 #            uID jID rating nRated
@@ -75,7 +79,7 @@ dataProcessing <- function(lPath2Csvs=csvs, repNA=T)
 #   - @time_hex: string, default '5cda01a9'
 #        Time in hexidecimal for the .RDS to be used.
 #
-main <- function(csvs=csvs, testing300='data/jester-data-testing.csv', 
+main <- function(csvs=csvs, testing300='../data/jester-data-testing.csv', 
   proportions=c(0.3, 0.6, 0.9), ranks=c(1,seq(10, 100, by=10)), useRDS=T, 
   time_hex='5cda01a9', verbose=T)
 {
