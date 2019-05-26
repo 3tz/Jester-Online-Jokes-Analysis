@@ -94,7 +94,7 @@ nmf_format <- function(mainOut='./RData/nmf_main_out_30_60_90_1_100_5cda01a9.rds
     for(i in 1:length(p))
     {
       l <- l_est[[strPs[i]]]
-      ridx <- which(c(0.3, 0.6, 0.9) == p[i])
+      ridx <- which(names(l_est) == p[i])
       optimalRnks[i] <- ranks[which.min(mae_est[ridx, ])]
     }
   }
