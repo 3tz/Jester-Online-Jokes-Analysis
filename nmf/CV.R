@@ -130,3 +130,34 @@ CV <- function(df, p, testuIDs, verbose=F, seed=9999)
   
   list(trainSet, testSet)
 }
+
+
+# Convert CV output to csv.
+#
+# Arguments:
+#   - @cv: list
+#       Output of CV()
+#   
+#   - @p: int
+#       Percentage of training set used. E.g.: 30, 60, 90.
+CV_2csv <- function(cv, p)
+{
+  #dn <- paste0(p*100, '_', pair, )
+  dn <- paste0('./rds2csv/')
+  dir.create(dn, showWarnings=F)
+  
+  nPairs <- length(cv[[1]])
+  
+  pfs <- c('train', 'test') # Postfixes
+  
+  for(i in 1:2)
+  {
+    for(j in 1:nPairs)
+    {
+      pf <- pfs[i]
+      fn <- paste(p, j, pf, sep='_')
+      write.table(cv[[i]][[j]][, -4], file=paste0(dn, fn, '.csv'), sep=',', row.names=F)
+    }
+  }
+}
+
