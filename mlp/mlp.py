@@ -29,7 +29,8 @@ np.set_printoptions(linewidth=250, threshold=np.nan, suppress=True)
 class Mlp(object):
     def __init__(self, train, val, lr, batch_size=4096, activation=LeakyReLU(),
                  layer_sizes=[(16, 3), 200, 100], dropout=False, bNorm=True,
-                 regularizer=None, verbose=False, useGen=False, shuffle=False):
+                 regularizer=None, verbose=False, useGen=False, shuffle=False,
+                 callbacks=None):
         """
         Initialize parameters required for training and testing the network.
         Structure:
@@ -82,6 +83,8 @@ class Mlp(object):
                 fit_generator() is used if True; otherwise, fit() is used.
             - shuffle: boolean, default False
                 Whether to shuffle the order of dataset.
+            - callbacks: list, default None
+                List of keras.callbacks.Callback objects to run
         Returns:
             - None
         """
@@ -97,6 +100,7 @@ class Mlp(object):
         self.verbose = verbose
         self.useGen = useGen
         self.shuffle = shuffle
+        self.callbacks = callbacks
 
         self.model = None
         self.trGen = DataGenerator(train, batch_size, shuffle)
@@ -168,6 +172,7 @@ class Mlp(object):
             print("Dropout:\t", self.dropout)
             print("Batch Norm:\t", self.bNorm)
             print("Regularizer:\t", self.reg)
+            print("Callbacks:\t", self.callbacks)
 
         # Time-stamp for saving
         ts = hex(int((datetime.now()).timestamp()))[2:]
@@ -183,9 +188,11 @@ class Mlp(object):
                                                  validation_data=(valX, valy),
                                                  epochs=n_epoch, verbose=1,
                                                  use_multiprocessing=True,
-                                                 workers=5)
+                                                 workers=5,
+                                                 callbacks=self.callbacks)
         else:
             self.hist = self.model.fit([self.train.uID, self.train.jID],
                                        self.train.iloc[:, 2], epochs=n_epoch,
                                        verbose=1, validation_data=(valX, valy),
-                                       batch_size=self.bs)
+                                       batch_size=self.bs,
+                                       callbacks=self.callbacks)
