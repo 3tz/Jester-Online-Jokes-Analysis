@@ -29,7 +29,8 @@ np.set_printoptions(linewidth=250, threshold=np.nan, suppress=True)
 class Mlp(object):
     def __init__(self, train, val, lr, batch_size=4096, activation=LeakyReLU(),
                  layer_sizes=[(16, 3), 200, 100], dropout=False, bNorm=True,
-                 regularizer=None, verbose=False, useGen=False, shuffle=False):
+                 regularizer=None, verbose=False, verbose_fit=1, useGen=False,
+                 shuffle=False):
         """
         Initialize parameters required for training and testing the network.
         Structure:
@@ -78,6 +79,8 @@ class Mlp(object):
                 Regularizer to use.
             - verbose: boolean, default False
                 Indicates whether to print out attributes before training.
+            - verbose_fit: int, default 1
+                Value for `verbose` in keras fit() function.
             - useGen: boolean, default False
                 fit_generator() is used if True; otherwise, fit() is used.
             - shuffle: boolean, default False
@@ -85,8 +88,8 @@ class Mlp(object):
         Returns:
             - None
         """
-        self.train = train
-        self.val = val
+        self.tr = train
+        self.va = val
         self.lr = lr
         self.bs = batch_size
         self.a = activation
@@ -95,6 +98,7 @@ class Mlp(object):
         self.bNorm = bNorm
         self.reg = regularizer
         self.verbose = verbose
+        self.verbose_fit = verbose_fit
         self.useGen = useGen
         self.shuffle = shuffle
 
@@ -111,11 +115,11 @@ class Mlp(object):
         input_uid = Input(shape=(1,), dtype='int32', name='input_uid')
         input_jid = Input(shape=(1,), dtype='int32', name='input_jid')
 
-        embedding_uid = Embedding(input_dim=self.train['uID'].max() + 1,
+        embedding_uid = Embedding(input_dim=self.tr['uID'].max() + 1,
                                   output_dim=emb_dim[0], input_length=1,
                                   embeddings_regularizer=self.reg,
                                   name='embedding_uid')
-        embedding_jid = Embedding(input_dim=self.train['jID'].max() + 1,
+        embedding_jid = Embedding(input_dim=self.tr['jID'].max() + 1,
                                   output_dim=emb_dim[1], input_length=1,
                                   embeddings_regularizer=self.reg,
                                   name='embedding_jid')
@@ -181,19 +185,21 @@ class Mlp(object):
         self.model.compile(optimizer=Adam(lr=self.lr, decay=.001),
                            loss='mean_squared_error', metrics=['mae'])
 
-        valX = [self.val.uID, self.val.jID]
-        valy = self.val.iloc[:, 2]
+        valX = [self.va.uID, self.va.jID]
+        valy = self.va.iloc[:, 2]
 
         if self.useGen:
             self.hist = self.model.fit_generator(generator=self.trGen,
                                                  validation_data=(valX, valy),
-                                                 epochs=n_epoch, verbose=1,
+                                                 epochs=n_epoch,
+                                                 verbose=self.verbose_fit,
                                                  use_multiprocessing=True,
                                                  workers=5,
                                                  callbacks=callbacks)
         else:
-            self.hist = self.model.fit([self.train.uID, self.train.jID],
-                                       self.train.iloc[:, 2], epochs=n_epoch,
-                                       verbose=1, validation_data=(valX, valy),
+            self.hist = self.model.fit([self.tr.uID, self.tr.jID],
+                                       self.tr.iloc[:, 2], epochs=n_epoch,
+                                       verbose=self.verbose_fit,
+                                       validation_data=(valX, valy),
                                        batch_size=self.bs,
                                        callbacks=callbacks)
