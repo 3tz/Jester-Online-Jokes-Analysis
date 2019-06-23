@@ -27,7 +27,7 @@ np.set_printoptions(linewidth=250, threshold=np.nan, suppress=True)
 #   - https://github.com/alexvlis/movie-recommendation-system
 
 class Mlp(object):
-    def __init__(self, train, val, lr, batch_size=4096, activation=LeakyReLU(),
+    def __init__(self, train, val, lr, batch_size=4096, activation=LeakyReLU,
                  layer_sizes=[(16, 3), 200, 100], dropout=False, bNorm=True,
                  regularizer=None, verbose=False, verbose_fit=1, useGen=False,
                  shuffle=False):
@@ -144,7 +144,7 @@ class Mlp(object):
             # connect layers
             z = Dense(n, kernel_regularizer=self.reg,
                       name='hidden_%d' % i)(layer)
-            z = self.a(z)
+            z = self.a()(z)
             if self.bNorm:
                 z = BatchNormalization()(z)
             if self.dropout:
@@ -153,8 +153,8 @@ class Mlp(object):
 
         out = Dense(1, activation='linear', name='output')(layer)
 
-        if self.bNorm:
-            out = BatchNormalization()(out)
+        # if self.bNorm:
+        #     out = BatchNormalization()(out)
 
         self.model = Model(inputs=[input_uid, input_jid], outputs=out)
 
